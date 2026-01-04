@@ -57,6 +57,7 @@
             ">
                 <form method="POST"
                       action="{{ route('music.update', $album->id) }}"
+                      enctype="multipart/form-data"
                       style="display:flex; flex-direction:column; gap:1.1rem;">
                     @csrf
                     @method('PUT')
@@ -151,6 +152,48 @@
                                       " />
 
                         <x-input-error :messages="$errors->get('year')" class="mt-2" />
+                    </div>
+
+                    {{-- IMAGE (NIEUW) --}}
+                    <div>
+                        <x-input-label for="image"
+                                       :value="__('Album image')"
+                                       style="display:block; margin-bottom:0.25rem; font-weight:700; color:#91171F;" />
+
+                        {{-- Huidige image preview --}}
+                        @if($album->image_path)
+                            <div style="margin-bottom:0.6rem;">
+                                <p style="margin:0 0 0.3rem 0; font-size:0.85rem; color:#5b1b26;">
+                                    Current cover:
+                                </p>
+                                <img src="{{ asset('images/' . $album->image_path) }}"
+                                     alt="{{ $album->name }}"
+                                     style="
+                                        width:140px;
+                                        height:140px;
+                                        object-fit:cover;
+                                        border-radius:0.75rem;
+                                        box-shadow:0 6px 14px rgba(0,0,0,0.25);
+                                     ">
+                            </div>
+                        @endif
+
+                        {{-- File input --}}
+                        <input id="image"
+                               name="image"
+                               type="file"
+                               accept="image/*"
+                               style="
+                                    display:block;
+                                    margin-top:0.15rem;
+                                    font-size:0.9rem;
+                               ">
+
+                        <p style="margin:0.2rem 0 0; font-size:0.8rem; color:#5b1b26;">
+                            Leave empty if you want to keep the current image.
+                        </p>
+
+                        <x-input-error :messages="$errors->get('image')" class="mt-2" />
                     </div>
 
                     {{-- Buttons --}}

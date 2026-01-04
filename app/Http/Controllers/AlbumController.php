@@ -15,7 +15,7 @@ class AlbumController extends Controller
     {
         // Filters uit de request
         $search       = $request->input('search');
-        $artistFilter = $request->input('artists'); // naam komt uit jouw <select name="artists">
+        $artistFilter = $request->input('artists');
         $genreFilter  = $request->input('genre');
         $yearFilter   = $request->input('year');
 
@@ -45,8 +45,8 @@ class AlbumController extends Controller
         // Resultaten ophalen
         $albums = $albums->get();
 
-        // Dropdown-opties (alias 'artist as artists' zodat jouw Blade $artist->artists werkt)
-        $artistOptions = Album::select('artist as artists')->distinct()->get();
+
+        $artistOptions = Album::select('artists')->distinct()->get();
         $genreOptions  = Album::select('genre')->distinct()->get();
         $yearOptions   = Album::select('year')->distinct()->get();
 
