@@ -60,7 +60,7 @@
 
         @if($albums->isEmpty())
             <p style="text-align:center; font-size:1rem; margin-top:2rem;">
-                You don't have any albums yet. Start by creating your first album 🎵
+                You don't have any albums yet. Start by creating your first album now.
             </p>
         @else
             <div style="display:grid;
@@ -74,6 +74,19 @@
                                 display:flex;
                                 flex-direction:column;
                                 justify-content:space-between;">
+
+                        {{-- Album image --}}
+                        @if($album->image_path)
+                            <div style="margin:-1.5rem -1.2rem 1rem -1.2rem;">
+                                <img src="{{ asset('images/' . $album->image_path) }}"
+                                     alt="{{ $album->name }}"
+                                     style="width:100%;
+                                            height:180px;
+                                            object-fit:cover;
+                                            border-radius:0.9rem 0.9rem 0 0;">
+                            </div>
+                        @endif
+
                         <div>
                             <h2 style="font-size:1.4rem;
                                        font-weight:800;
@@ -85,7 +98,7 @@
 
                             <p style="margin:0.25rem 0;">
                                 <span style="font-weight:600;">Artist:</span>
-                                {{ $album->artist }}
+                                {{ $album->artists }}
                             </p>
                             <p style="margin:0.25rem 0;">
                                 <span style="font-weight:600;">Genre:</span>

@@ -17,6 +17,38 @@
 
         <div style="max-width:1200px; margin:0 auto;">
 
+            {{-- ERROR MESSAGES --}}
+            @if ($errors->any())
+                <div style="
+                    margin-bottom:1.5rem;
+                    background:#410B13;
+                    color:#FFD6E8;
+                    padding:1rem 1.2rem;
+                    border-radius:0.75rem;
+                    box-shadow:0 4px 8px rgba(0,0,0,0.35);
+                ">
+                    <ul style="margin:0; padding-left:1.2rem;">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- SUCCESS MESSAGE --}}
+            @if (session('success'))
+                <div style="
+                    margin-bottom:1.5rem;
+                    background:#0f7a32;
+                    color:#ffffff;
+                    padding:0.9rem 1.1rem;
+                    border-radius:0.75rem;
+                    box-shadow:0 4px 8px rgba(0,0,0,0.35);
+                ">
+                    {{ session('success') }}
+                </div>
+            @endif
+
             <!-- FILTERBALK -->
             <form action="{{ route('music.catalog') }}" method="GET"
                   style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center; margin-bottom:2rem;">

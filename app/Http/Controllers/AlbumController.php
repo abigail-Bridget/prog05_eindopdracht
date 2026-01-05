@@ -6,16 +6,18 @@ use App\Models\Album;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class AlbumController extends Controller
 {
-    // Catalog: alle ALBUMS die actief zijn
+    /**
+     * Catalog: alle ALBUMS die actief zijn (is_active = true)
+     * met zoeken en filteren.
+     */
     public function catalog(Request $request)
     {
         // Filters uit de request
         $search       = $request->input('search');
-        $artistFilter = $request->input('artists');
+        $artistFilter = $request->input('artists');  // let op: 'artists' uit de form
         $genreFilter  = $request->input('genre');
         $yearFilter   = $request->input('year');
 
@@ -27,9 +29,9 @@ class AlbumController extends Controller
             $albums->where('name', 'LIKE', "%{$search}%");
         }
 
-        // Filter op artist (kolom heet 'artist' in de database)
+        // Filter op artists (kolom heet 'artists' in de database)
         if ($artistFilter) {
-            $albums->where('artist', $artistFilter);
+            $albums->where('artists', $artistFilter);
         }
 
         // Filter op genre
@@ -45,7 +47,7 @@ class AlbumController extends Controller
         // Resultaten ophalen
         $albums = $albums->get();
 
-
+        // Opties voor de filter-selects
         $artistOptions = Album::select('artists')->distinct()->get();
         $genreOptions  = Album::select('genre')->distinct()->get();
         $yearOptions   = Album::select('year')->distinct()->get();
@@ -53,7 +55,10 @@ class AlbumController extends Controller
         return view('catalog', compact('albums', 'artistOptions', 'genreOptions', 'yearOptions'));
     }
 
-    // My Albums: alle albums van de ingelogde gebruiker (actief + niet actief)
+    /**
+     * My Albums: alle albums van de ingelogde gebruiker
+     * (zowel actief als niet-actief).
+     */
     public function myAlbums()
     {
         $user = Auth::user();
@@ -70,47 +75,56 @@ class AlbumController extends Controller
         return view('my_albums', compact('albums'));
     }
 
-    // Eén album tonen
+    /**
+     * Eén album tonen.
+     */
     public function show($id)
     {
         $album = Album::findOrFail($id);
         return view('show', compact('album'));
     }
 
-    // Form om een nieuw album toe te voegen (alleen admin)
+    /**
+     * Form om een nieuw album toe te voegen.
+     * Iedereen die is ingelogd mag dit (route heeft middleware('auth')).
+     */
     public function create()
     {
-        if (!Auth::user() || Auth::user()->role !== 'admin') {
-            return redirect()
-                ->route('music.catalog')
-                ->withErrors(['error' => 'You do not have permission to add a new album.']);
-        }
-
-        return view('albums.create');
+        return view('create_album'); // jouw view: resources/views/create_album.blade.php
     }
 
-    // Opslaan van nieuw album
+    /**
+     * Nieuw album opslaan.
+     */
     public function store(Request $request)
     {
         $request->validate([
-            'name'   => 'required|string|max:255',
-            'artist' => 'required|string|max:255',
-            'genre'  => 'required|string',
-            'year'   => 'required|integer',
-            'image'  => 'image|nullable|max:1999',
+            'name'    => 'required|string|max:255',
+            'artists' => 'required|string|max:255', // let op: 'artists'
+            'genre'   => 'required|string',
+            'year'    => 'required|integer',
+            'image'   => 'nullable|image|max:1999',
         ]);
 
         $albumData = [
             'name'      => $request->input('name'),
-            'artist'    => $request->input('artist'),
+            'artists'   => $request->input('artists'),
             'genre'     => $request->input('genre'),
             'year'      => $request->input('year'),
             'user_id'   => Auth::id(),
             'is_active' => true,
         ];
 
+        // Image opslaan (alleen bestandsnaam in database)
         if ($request->hasFile('image')) {
-            $albumData['image'] = $request->file('image')->store('images', 'public');
+            $file     = $request->file('image');
+            $filename = $file->getClientOriginalName();
+
+            // Verplaatsen naar public/images
+            $file->move(public_path('images'), $filename);
+
+            // In database alleen de naam opslaan
+            $albumData['image_path'] = $filename;
         }
 
         $album = Album::create($albumData);
@@ -118,52 +132,72 @@ class AlbumController extends Controller
         Log::info('New album added by user ID: ' . Auth::id(), ['album_id' => $album->id]);
 
         return redirect()
-            ->route('music.catalog')
+            ->route('music.my_albums')
             ->with('success', 'Album successfully added.');
     }
 
-    // Edit-form voor één album
+    /**
+     * Edit-form voor één album.
+     * Alleen eigenaar of admin mag hierbij.
+     */
     public function edit($id)
     {
         $album = Album::findOrFail($id);
 
-        // Alleen eigenaar of admin mag bewerken
+        // Alleen eigenaar of admin
         if ($album->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             return redirect()
                 ->route('music.catalog')
-                ->withErrors(['error' => 'You do not have permission to edit this album.']);
+                ->withErrors(['error' => 'Only the owner of the album or an admin can edit this album.']);
         }
 
         return view('edit_album', compact('album'));
     }
 
-    // Update album
+    /**
+     * Album bijwerken.
+     */
     public function update(Request $request, $id)
     {
         $album = Album::findOrFail($id);
 
-        // Alleen eigenaar of admin mag updaten
+        // Alleen eigenaar of admin
         if ($album->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             return redirect()
                 ->route('music.catalog')
-                ->withErrors(['error' => 'You do not have permission to update this album.']);
+                ->withErrors(['error' => ' Only the owner of the album or an admin can update this album.']);
         }
 
         $request->validate([
-            'name'   => 'required|string|max:255',
-            'artist' => 'required|string|max:255',
-            'genre'  => 'required|string',
-            'year'   => 'required|integer',
-            'image'  => 'image|nullable|max:1999',
+            'name'    => 'required|string|max:255',
+            'artists' => 'required|string|max:255',
+            'genre'   => 'required|string',
+            'year'    => 'required|integer',
+            'image'   => 'nullable|image|max:1999',
         ]);
 
-        $albumData = $request->only('name', 'artist', 'genre', 'year');
+        $albumData = [
+            'name'    => $request->input('name'),
+            'artists' => $request->input('artists'),
+            'genre'   => $request->input('genre'),
+            'year'    => $request->input('year'),
+        ];
 
+        // Nieuwe image uploaden (optioneel)
         if ($request->hasFile('image')) {
-            if ($album->image) {
-                Storage::disk('public')->delete($album->image);
+            // Oude image verwijderen als die bestaat
+            if ($album->image_path) {
+                $oldPath = public_path('images/' . $album->image_path);
+                if (file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
             }
-            $albumData['image'] = $request->file('image')->store('images', 'public');
+
+            $file     = $request->file('image');
+            $filename = $file->getClientOriginalName();
+            $file->move(public_path('images'), $filename);
+
+            $albumData['image_path'] = $filename;
         }
 
         $album->update($albumData);
@@ -175,28 +209,37 @@ class AlbumController extends Controller
             ->with('success', 'Album successfully updated.');
     }
 
-    // Verwijder album
+    /**
+     * Album verwijderen.
+     * Alleen eigenaar of admin.
+     * Extra eis: user moet minimaal 3 albums hebben om te mogen verwijderen.
+     */
     public function destroy($id)
     {
         $album = Album::findOrFail($id);
 
-        // Alleen eigenaar of admin mag verwijderen
+        // Alleen eigenaar of admin
         if ($album->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             return redirect()
                 ->route('music.catalog')
-                ->withErrors(['error' => 'You do not have permission to delete this album.']);
+                ->withErrors(['error' => 'Only the owner of the album or an admin can delete this album.']);
         }
 
         // Minimaal 3 albums regel
         $albumCount = Album::where('user_id', Auth::id())->count();
+
         if ($albumCount <= 3) {
             return redirect()
                 ->route('music.catalog')
                 ->withErrors(['error' => 'You must have added at least 3 albums before you can delete one.']);
         }
 
-        if ($album->image) {
-            Storage::disk('public')->delete($album->image);
+        // Image verwijderen als die bestaat
+        if ($album->image_path) {
+            $oldPath = public_path('images/' . $album->image_path);
+            if (file_exists($oldPath)) {
+                @unlink($oldPath);
+            }
         }
 
         $album->delete();
@@ -208,12 +251,15 @@ class AlbumController extends Controller
             ->with('success', 'Album successfully deleted.');
     }
 
-    // Toggle actief / niet-actief
+    /**
+     * Toggle actief / niet-actief.
+     * Alleen eigenaar of admin.
+     */
     public function toggleStatus($id)
     {
         $album = Album::findOrFail($id);
 
-        // Alleen eigenaar of admin mag status togglen
+        // Alleen eigenaar of admin
         if ($album->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             return redirect()
                 ->back()
@@ -224,8 +270,8 @@ class AlbumController extends Controller
         $album->save();
 
         Log::info('Status of album changed by user ID: ' . Auth::id(), [
-            'album_id'   => $album->id,
-            'is_active'  => $album->is_active,
+            'album_id'  => $album->id,
+            'is_active' => $album->is_active,
         ]);
 
         return redirect()
